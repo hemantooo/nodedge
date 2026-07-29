@@ -19,10 +19,10 @@ export default function Header() {
 
         <div className="w-px h-5 bg-white/20" />
 
-        {/* Tinkering Hub — embedded JPEG inside SVG, render at native 832×264 then scale */}
+        {/* Tinkering Hub */}
         <div className="flex items-center h-8 overflow-hidden">
           <img
-            src="/images/tinkering_hub_logo.svg"
+            src="/images/thub_logo.svg"
             alt="Tinkering Hub"
             width={832}
             height={264}
