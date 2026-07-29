@@ -12,9 +12,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from schemas import HealthResponse, RegistrationRequest, RegistrationResponse
-from sheets_service import sheets_service
-from email_service import send_ticket_email
+from api.schemas import HealthResponse, RegistrationRequest, RegistrationResponse
+from api.sheets_service import sheets_service
+from api.email_service import send_ticket_email
 
 # Initialize FastAPI application
 app = FastAPI(
