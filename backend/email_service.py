@@ -48,8 +48,8 @@ async def send_ticket_email(email: str, full_name: str, registration_id: str):
         
         # Determine if email configuration is somewhat valid before sending
         if conf.MAIL_USERNAME == "your_email@gmail.com":
-             logger.warning("SMTP not configured properly. Skipping actual email send.")
-             return
+            logger.warning("SMTP not configured properly. Skipping actual email send.")
+            return
 
         # Prepare Email HTML body
         html_body = f"""
