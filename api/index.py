@@ -17,6 +17,7 @@ from api.sheets_service import sheets_service
 from api.email_service import send_ticket_email
 
 # Initialize FastAPI application
+print("Starting FastAPI Backend Server on Vercel...")
 app = FastAPI(
     title="Workshop Registration Backend API",
     description="FastAPI backend server for syncing student workshop registrations to Google Sheets.",
