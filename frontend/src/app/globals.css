@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  --color-swift-orange: #FF5257;
+  --color-xcode-purple: #985EFF;
+}
+
+:root {
+  --background: #000000;
+  --foreground: #f5f5f7;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom glow utility */
+@utility glow-swift {
+  box-shadow: 0 0 20px rgba(255, 82, 87, 0.3);
+}
+
+@utility glow-xcode {
+  box-shadow: 0 0 20px rgba(152, 94, 255, 0.3);
+}
+
+@utility text-glow {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
