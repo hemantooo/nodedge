@@ -7,13 +7,14 @@ import hashlib
 import time
 from typing import Any, Dict
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status, BackgroundTasks
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from schemas import HealthResponse, RegistrationRequest, RegistrationResponse
 from sheets_service import sheets_service
+from email_service import send_ticket_email
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -71,7 +72,7 @@ def generate_registration_id(enrollment_no: str) -> str:
     summary="Submit Workshop Registration",
     description="Validates student details, checks for duplicate enrollment, and appends record to Google Sheet.",
 )
-async def register_student(request: RegistrationRequest) -> Dict[str, Any]:
+async def register_student(request: RegistrationRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
     """
     Handles student registration POST requests.
     """
@@ -109,6 +110,9 @@ async def register_student(request: RegistrationRequest) -> Dict[str, Any]:
 
     # 3. Generate unique registration hash ID
     registration_id = generate_registration_id(request.enrollment_no)
+
+    # Queue ticket email in the background
+    background_tasks.add_task(send_ticket_email, request.email, request.full_name, registration_id)
 
     # 4. Return success response
     return {

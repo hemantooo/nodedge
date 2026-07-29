@@ -7,3 +7,6 @@ google-auth>=2.20.0
 python-dotenv>=1.0.0
 pytest>=7.0.0
 httpx>=0.24.0
+qrcode>=7.4.2
+Pillow>=10.0.0
+fastapi-mail>=1.4.1
