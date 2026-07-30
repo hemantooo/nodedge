@@ -39,7 +39,7 @@ async def send_ticket_email(email: str, full_name: str, registration_id: str):
         qr.add_data(registration_id)
         qr.make(fit=True)
 
-        img = qr.make_image(fill_color="black", back_color="white")
+        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
         
         # Save image to a temporary file
         fd, temp_path = tempfile.mkstemp(suffix=".png", prefix="ticket_qr_")
