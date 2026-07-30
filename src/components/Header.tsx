@@ -19,19 +19,17 @@ export default function Header() {
 
         <div className="w-px h-5 bg-white/20" />
 
-        {/* Tinkering Hub */}
-        <div className="flex items-center h-8 overflow-hidden">
-          <img
-            src="/images/thub_logo.svg"
-            alt="Tinkering Hub"
-            width={832}
-            height={264}
-            style={{
-              height: '32px',
-              width: 'auto',
-              objectFit: 'contain',
-              imageRendering: 'auto',
-            }}
+        {/* AACTE */}
+        <div className="flex items-center h-9 overflow-hidden" style={{ isolation: 'isolate' }}>
+          <Image
+            src="/images/aatce_logo.svg"
+            alt="AACTE"
+            width={126}
+            height={40}
+            className="h-9 w-auto object-contain"
+            style={{ transform: 'translateZ(0)', willChange: 'transform' }}
+            unoptimized
+            priority
           />
         </div>
 
