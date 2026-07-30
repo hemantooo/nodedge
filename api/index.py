@@ -126,14 +126,23 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
         )
 
     # Send ticket email (awaited directly to prevent Vercel Serverless from freezing the container mid-execution)
-    await send_ticket_email(request.email, request.full_name, registration_id)
+    email_error = None
+    try:
+        await send_ticket_email(request.email, request.full_name, registration_id)
+    except Exception as exc:
+        email_error = str(exc)
+        import logging
+        logging.getLogger(__name__).error(f"Email delivery failed: {email_error}")
 
     # 4. Return success response
-    return {
+    response = {
         "status": "success",
         "message": "Registration successful!",
         "registration_id": registration_id,
     }
+    if email_error:
+        response["email_warning"] = f"Registration saved but email failed: {email_error}"
+    return response
 
 
 @app.get(
