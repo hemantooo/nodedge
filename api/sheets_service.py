@@ -44,8 +44,15 @@ class GoogleSheetsService:
             )
 
         # Check if credentials_json is a path to an existing file
-        if os.path.isfile(self.credentials_json):
-            return Credentials.from_service_account_file(self.credentials_json, scopes=SCOPES)
+        target_path = self.credentials_json
+        if not os.path.isfile(target_path):
+            api_dir = os.path.dirname(os.path.abspath(__file__))
+            alt_path = os.path.join(api_dir, self.credentials_json)
+            if os.path.isfile(alt_path):
+                target_path = alt_path
+
+        if os.path.isfile(target_path):
+            return Credentials.from_service_account_file(target_path, scopes=SCOPES)
 
         # Try parsing as raw JSON string
         try:
@@ -79,7 +86,7 @@ class GoogleSheetsService:
 
     def _ensure_headers(self) -> None:
         """
-        Ensures the header row exists in the worksheet.
+        Ensures the header row exists in the worksheet and matches the required schema.
         """
         if self.worksheet is None:
             return
@@ -91,11 +98,18 @@ class GoogleSheetsService:
             "Email",
             "Semester",
             "Has Mac",
-            "Proficiency"
+            "Proficiency",
+            "Registration ID",
+            "Attendance"
         ]
         existing_headers = self.worksheet.row_values(1)
         if not existing_headers:
             self.worksheet.append_row(expected_headers)
+        elif len(existing_headers) < len(expected_headers):
+            # Pad the worksheet headers with missing columns
+            for i, header in enumerate(expected_headers):
+                if i >= len(existing_headers):
+                    self.worksheet.update_cell(1, i + 1, header)
 
     def is_enrollment_registered(self, enrollment_no: str) -> bool:
         """
@@ -121,10 +135,12 @@ class GoogleSheetsService:
         semester: str,
         has_mac: str,
         proficiency: str,
+        registration_id: str,
+        attendance: str = "Absent"
     ) -> List[str]:
         """
         Appends a new student registration record to the Google Sheet.
-        Row format: [Timestamp, Full Name, Enrollment No, Email, Semester, Has Mac, Proficiency]
+        Row format: [Timestamp, Full Name, Enrollment No, Email, Semester, Has Mac, Proficiency, Registration ID, Attendance]
         """
         worksheet = self.connect()
         timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -136,9 +152,77 @@ class GoogleSheetsService:
             semester.strip(),
             has_mac.strip(),
             proficiency.strip(),
+            registration_id.strip(),
+            attendance.strip(),
         ]
         worksheet.append_row(row)
         return row
+
+    def get_student_by_registration_id(self, registration_id: str) -> Optional[Tuple[int, dict]]:
+        """
+        Searches the Google Sheet for a registration_id (Column 8) or Enrollment No (Column 3).
+        Returns a tuple of (row_index, student_data_dict) if found, else None.
+        """
+        worksheet = self.connect()
+        all_values = worksheet.get_all_values()
+        if len(all_values) <= 1:
+            return None
+        
+        clean_target = str(registration_id).strip().lower()
+        if not clean_target:
+            return None
+
+        for idx, row in enumerate(all_values[1:], start=2):
+            # Check Registration ID (index 7) or Enrollment No (index 2)
+            match_registration = len(row) >= 8 and str(row[7]).strip().lower() == clean_target
+            match_enrollment = len(row) >= 3 and str(row[2]).strip().lower() == clean_target
+
+            if match_registration or match_enrollment:
+                student = {
+                    "full_name": row[1] if len(row) >= 2 else "",
+                    "enrollment_no": row[2] if len(row) >= 3 else "",
+                    "email": row[3] if len(row) >= 4 else "",
+                    "semester": row[4] if len(row) >= 5 else "",
+                    "has_mac": row[5] if len(row) >= 6 else "",
+                    "proficiency": row[6] if len(row) >= 7 else "",
+                    "registration_id": row[7] if len(row) >= 8 else "",
+                    "attendance": row[8] if len(row) >= 9 else "Absent"
+                }
+                return idx, student
+        return None
+
+    def mark_attendance(self, registration_id: str, status: str = "Present") -> Optional[dict]:
+        """
+        Finds student by registration_id and updates their attendance status in column 9.
+        Returns the updated student dictionary or None if not found.
+        """
+        worksheet = self.connect()
+        result = self.get_student_by_registration_id(registration_id)
+        if not result:
+            return None
+        
+        row_idx, student = result
+        # Update cell in column 9 (Attendance)
+        worksheet.update_cell(row_idx, 9, status)
+        student["attendance"] = status
+        return student
+
+    def get_attendance_stats(self) -> Tuple[int, int]:
+        """
+        Calculates stats of checked-in vs total registrations.
+        Returns a tuple of (total_registrations, checked_in_count).
+        """
+        worksheet = self.connect()
+        all_values = worksheet.get_all_values()
+        if len(all_values) <= 1:
+            return 0, 0
+        
+        total = len(all_values) - 1
+        present = 0
+        for row in all_values[1:]:
+            if len(row) >= 9 and str(row[8]).strip().lower() == "present":
+                present += 1
+        return total, present
 
     def get_total_registrations(self) -> int:
         """

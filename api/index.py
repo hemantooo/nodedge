@@ -4,15 +4,27 @@ Handles CORS, validation, duplicate prevention, registration submission, and hea
 """
 
 import hashlib
+import os
+import sys
 import time
 from typing import Any, Dict
+
+# Add parent directory to sys.path to allow absolute imports of the api package
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, HTTPException, Request, status, BackgroundTasks
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api.schemas import HealthResponse, RegistrationRequest, RegistrationResponse
+from api.schemas import (
+    HealthResponse,
+    RegistrationRequest,
+    RegistrationResponse,
+    AttendanceRequest,
+    AttendanceResponse,
+    StatsResponse,
+)
 from api.sheets_service import sheets_service
 from api.email_service import send_ticket_email
 
@@ -93,7 +105,10 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
             detail=f"Google Sheets service error: {str(exc)}",
         )
 
-    # 2. Append new row to Google Sheet
+    # 2. Generate unique registration hash ID
+    registration_id = generate_registration_id(request.enrollment_no)
+
+    # 3. Append new row to Google Sheet
     try:
         sheets_service.append_registration(
             full_name=request.full_name,
@@ -102,15 +117,13 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
             semester=request.semester,
             has_mac=request.has_mac,
             proficiency=request.proficiency,
+            registration_id=registration_id,
         )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to append registration data to Google Sheet: {str(exc)}",
         )
-
-    # 3. Generate unique registration hash ID
-    registration_id = generate_registration_id(request.enrollment_no)
 
     # Queue ticket email in the background
     background_tasks.add_task(send_ticket_email, request.email, request.full_name, registration_id)
@@ -152,7 +165,96 @@ async def health_check() -> Dict[str, Any]:
     }
 
 
+# Coordinator Pin Configuration
+COORDINATOR_PIN = os.getenv("COORDINATOR_PIN", "1234")
+
+
+@app.post(
+    "/api/attendance/mark",
+    response_model=AttendanceResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Mark Attendee Attendance",
+    description="Validates coordinator PIN, checks registration ID in sheet, and marks student as Present.",
+)
+async def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
+    """
+    Handles marking attendance.
+    """
+    if request.pin != COORDINATOR_PIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid coordinator PIN code.",
+        )
+
+    try:
+        res = sheets_service.get_student_by_registration_id(request.registration_id)
+        if not res:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Registration ID not found.",
+            )
+
+        row_idx, student = res
+        if student["attendance"].strip().lower() == "present":
+            return {
+                "status": "already_marked",
+                "message": f"{student['full_name']} is already checked in.",
+                **student
+            }
+
+        updated_student = sheets_service.mark_attendance(request.registration_id, "Present")
+        if not updated_student:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update attendance in Google Sheet.",
+            )
+
+        return {
+            "status": "success",
+            "message": f"Successfully checked in {updated_student['full_name']}!",
+            **updated_student
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error occurred: {str(exc)}",
+        )
+
+
+@app.get(
+    "/api/attendance/stats",
+    response_model=StatsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get Attendance Statistics",
+    description="Returns check-in counts (total registered vs present) after verifying Coordinator PIN.",
+)
+async def get_stats(pin: str) -> Dict[str, Any]:
+    """
+    Returns check-in stats.
+    """
+    if pin != COORDINATOR_PIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid coordinator PIN code.",
+        )
+
+    try:
+        total, present = sheets_service.get_attendance_stats()
+        return {
+            "status": "success",
+            "total_registrations": total,
+            "checked_in_count": present,
+        }
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error occurred: {str(exc)}",
+        )
+
+
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("index:app", host="0.0.0.0", port=8000, reload=True)

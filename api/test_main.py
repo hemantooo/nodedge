@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app
+from api.index import app
 
 client = TestClient(app)
 
@@ -16,7 +16,7 @@ def test_health_check_healthy():
     """
     Test GET /api/health when Google Sheets service is healthy.
     """
-    with patch("main.sheets_service.check_health", return_value=(True, 42, None)):
+    with patch("api.index.sheets_service.check_health", return_value=(True, 42, None)):
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
@@ -30,7 +30,7 @@ def test_health_check_degraded():
     """
     Test GET /api/health when Google Sheets connection fails.
     """
-    with patch("main.sheets_service.check_health", return_value=(False, 0, "Missing credentials")):
+    with patch("api.index.sheets_service.check_health", return_value=(False, 0, "Missing credentials")):
         response = client.get("/api/health")
         assert response.status_code == 200
         data = response.json()
@@ -49,11 +49,11 @@ def test_register_successful():
         "email": "alice.smith@paruluniversity.ac.in",
         "semester": "Semester 6",
         "proficiency": "Advanced",
-        "reason": "Interested in Machine Learning models"
+        "has_mac": "yes"
     }
 
-    with patch("main.sheets_service.is_enrollment_registered", return_value=False), \
-         patch("main.sheets_service.append_registration", return_value=[]):
+    with patch("api.index.sheets_service.is_enrollment_registered", return_value=False), \
+         patch("api.index.sheets_service.append_registration", return_value=[]):
         response = client.post("/api/register", json=payload)
         assert response.status_code == 200
         data = response.json()
@@ -73,10 +73,10 @@ def test_register_duplicate_enrollment():
         "email": "bob.jones@paruluniversity.ac.in",
         "semester": "Semester 4",
         "proficiency": "Beginner",
-        "reason": "Wants to learn Python"
+        "has_mac": "yes"
     }
 
-    with patch("main.sheets_service.is_enrollment_registered", return_value=True):
+    with patch("api.index.sheets_service.is_enrollment_registered", return_value=True):
         response = client.post("/api/register", json=payload)
         assert response.status_code == 400
         data = response.json()
@@ -94,7 +94,7 @@ def test_register_invalid_email_domain():
         "email": "charlie@gmail.com",
         "semester": "Semester 3",
         "proficiency": "Intermediate",
-        "reason": "Test non-university email"
+        "has_mac": "no"
     }
 
     response = client.post("/api/register", json=payload)
@@ -114,8 +114,112 @@ def test_register_missing_required_field():
         "email": "dave@paruluniversity.ac.in",
         "semester": "Semester 1",
         "proficiency": "Beginner",
-        "reason": "Test"
+        "has_mac": "no"
     }
 
     response = client.post("/api/register", json=payload)
     assert response.status_code == 400
+
+
+def test_mark_attendance_successful():
+    """
+    Test POST /api/attendance/mark with valid registration ID and correct PIN.
+    """
+    payload = {
+        "registration_id": "test_id_123",
+        "pin": "1234"
+    }
+    mock_student = {
+        "full_name": "Alice Smith",
+        "enrollment_no": "210303123045",
+        "email": "alice.smith@paruluniversity.ac.in",
+        "semester": "Semester 6",
+        "proficiency": "Advanced",
+        "registration_id": "test_id_123",
+        "attendance": "Absent"
+    }
+    mock_updated_student = mock_student.copy()
+    mock_updated_student["attendance"] = "Present"
+
+    with patch("api.index.sheets_service.get_student_by_registration_id", return_value=(2, mock_student)), \
+         patch("api.index.sheets_service.mark_attendance", return_value=mock_updated_student):
+        response = client.post("/api/attendance/mark", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["full_name"] == "Alice Smith"
+        assert data["attendance"] == "Present"
+
+
+def test_mark_attendance_already_marked():
+    """
+    Test POST /api/attendance/mark when attendee is already present.
+    """
+    payload = {
+        "registration_id": "test_id_123",
+        "pin": "1234"
+    }
+    mock_student = {
+        "full_name": "Alice Smith",
+        "enrollment_no": "210303123045",
+        "email": "alice.smith@paruluniversity.ac.in",
+        "semester": "Semester 6",
+        "proficiency": "Advanced",
+        "registration_id": "test_id_123",
+        "attendance": "Present"
+    }
+
+    with patch("api.index.sheets_service.get_student_by_registration_id", return_value=(2, mock_student)):
+        response = client.post("/api/attendance/mark", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "already_marked"
+        assert "already checked in" in data["message"]
+
+
+def test_mark_attendance_invalid_pin():
+    """
+    Test POST /api/attendance/mark with incorrect PIN.
+    """
+    payload = {
+        "registration_id": "test_id_123",
+        "pin": "wrong_pin"
+    }
+    response = client.post("/api/attendance/mark", json=payload)
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Invalid coordinator PIN code."
+
+
+def test_mark_attendance_not_found():
+    """
+    Test POST /api/attendance/mark with non-existing registration ID.
+    """
+    payload = {
+        "registration_id": "non_existent",
+        "pin": "1234"
+    }
+    with patch("api.index.sheets_service.get_student_by_registration_id", return_value=None):
+        response = client.post("/api/attendance/mark", json=payload)
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Registration ID not found."
+
+
+def test_get_stats_successful():
+    """
+    Test GET /api/attendance/stats with correct PIN.
+    """
+    with patch("api.index.sheets_service.get_attendance_stats", return_value=(10, 4)):
+        response = client.get("/api/attendance/stats?pin=1234")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["total_registrations"] == 10
+        assert data["checked_in_count"] == 4
+
+
+def test_get_stats_invalid_pin():
+    """
+    Test GET /api/attendance/stats with invalid PIN.
+    """
+    response = client.get("/api/attendance/stats?pin=wrong")
+    assert response.status_code == 403

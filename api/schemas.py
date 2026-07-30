@@ -47,3 +47,35 @@ class HealthResponse(BaseModel):
     total_registrations: int = Field(..., description="Total count of registrations in Google Sheet")
     google_sheets_connected: bool = Field(..., description="Status of Google Sheets API connectivity")
     message: Optional[str] = Field(None, description="Additional status message if disconnected")
+
+
+class AttendanceRequest(BaseModel):
+    """
+    Schema for marking attendance.
+    """
+    registration_id: str = Field(..., description="Unique registration ID from QR code")
+    pin: str = Field(..., description="Coordinator security PIN")
+
+
+class AttendanceResponse(BaseModel):
+    """
+    Schema for attendance response.
+    """
+    status: str = Field(..., description="Status of check-in ('success', 'already_marked', 'error')")
+    message: str = Field(..., description="Details of check-in result")
+    full_name: Optional[str] = Field(None, description="Student's full name")
+    enrollment_no: Optional[str] = Field(None, description="Student's enrollment number")
+    email: Optional[str] = Field(None, description="Student's email")
+    semester: Optional[str] = Field(None, description="Student's semester")
+    has_mac: Optional[str] = Field(None, description="Student's Mac availability status")
+    proficiency: Optional[str] = Field(None, description="Student's proficiency level")
+    attendance: Optional[str] = Field(None, description="Attendance status")
+
+
+class StatsResponse(BaseModel):
+    """
+    Response schema for check-in statistics.
+    """
+    status: str = Field("success")
+    total_registrations: int = Field(..., description="Total registrations count")
+    checked_in_count: int = Field(..., description="Total checked-in (present) count")
