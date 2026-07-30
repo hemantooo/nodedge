@@ -125,8 +125,8 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
             detail=f"Failed to append registration data to Google Sheet: {str(exc)}",
         )
 
-    # Queue ticket email in the background
-    background_tasks.add_task(send_ticket_email, request.email, request.full_name, registration_id)
+    # Send ticket email (awaited directly to prevent Vercel Serverless from freezing the container mid-execution)
+    await send_ticket_email(request.email, request.full_name, registration_id)
 
     # 4. Return success response
     return {

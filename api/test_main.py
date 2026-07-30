@@ -53,7 +53,8 @@ def test_register_successful():
     }
 
     with patch("api.index.sheets_service.is_enrollment_registered", return_value=False), \
-         patch("api.index.sheets_service.append_registration", return_value=[]):
+         patch("api.index.sheets_service.append_registration", return_value=[]), \
+         patch("api.index.send_ticket_email") as mock_send_email:
         response = client.post("/api/register", json=payload)
         assert response.status_code == 200
         data = response.json()
@@ -61,6 +62,7 @@ def test_register_successful():
         assert data["message"] == "Registration successful!"
         assert "registration_id" in data
         assert len(data["registration_id"]) > 0
+        mock_send_email.assert_called_once()
 
 
 def test_register_duplicate_enrollment():
