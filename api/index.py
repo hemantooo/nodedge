@@ -116,9 +116,9 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
             full_name=request.full_name,
             enrollment_no=request.enrollment_no,
             email=request.email,
-            semester=request.semester,
+            class_name=request.class_name,
+            phone_number=request.phone_number,
             has_mac=request.has_mac,
-            proficiency=request.proficiency,
             registration_id=registration_id,
         )
     except Exception as exc:
@@ -283,7 +283,7 @@ async def process_tickets(request: AdminProcessRequest) -> Dict[str, Any]:
             if status_val == "approved":
                 try:
                     await send_ticket_email(student["email"], student["full_name"], student["registration_id"])
-                    sheets_service.update_student_status(student["row_idx"], "Ticket Sent")
+                    sheets_service.update_student_status(student["worksheet_title"], student["row_idx"], "Ticket Sent")
                     approved_sent += 1
                 except Exception as e:
                     import logging
@@ -291,7 +291,7 @@ async def process_tickets(request: AdminProcessRequest) -> Dict[str, Any]:
             elif status_val == "rejected":
                 try:
                     await send_rejection_email(student["email"], student["full_name"])
-                    sheets_service.update_student_status(student["row_idx"], "Rejection Sent")
+                    sheets_service.update_student_status(student["worksheet_title"], student["row_idx"], "Rejection Sent")
                     rejected_sent += 1
                 except Exception as e:
                     import logging

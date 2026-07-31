@@ -13,8 +13,8 @@ class RegistrationRequest(BaseModel):
     full_name: str = Field(..., min_length=1, description="Student's full name", example="John Doe")
     enrollment_no: str = Field(..., min_length=1, description="Student's unique enrollment number", example="210303123001")
     email: EmailStr = Field(..., description="Student's institutional email address", example="john.doe@paruluniversity.ac.in")
-    semester: str = Field(..., min_length=1, description="Current semester", example="Semester 5")
-    proficiency: str = Field(..., min_length=1, description="Skill/Proficiency level", example="Intermediate")
+    class_name: str = Field(..., min_length=1, description="Current class (e.g., 2AIML4)", example="2AIML4")
+    phone_number: str = Field(..., min_length=10, max_length=10, pattern=r'^\d{10}$', description="10-digit phone number without country code", example="9876543210")
     has_mac: str = Field(..., description="Does the student have a Mac device? ('yes' or 'no')", example="yes")
 
     @field_validator('email')
@@ -66,9 +66,9 @@ class AttendanceResponse(BaseModel):
     full_name: Optional[str] = Field(None, description="Student's full name")
     enrollment_no: Optional[str] = Field(None, description="Student's enrollment number")
     email: Optional[str] = Field(None, description="Student's email")
-    semester: Optional[str] = Field(None, description="Student's semester")
+    class_name: Optional[str] = Field(None, description="Student's class")
+    phone_number: Optional[str] = Field(None, description="Student's phone number")
     has_mac: Optional[str] = Field(None, description="Student's Mac availability status")
-    proficiency: Optional[str] = Field(None, description="Student's proficiency level")
     attendance: Optional[str] = Field(None, description="Attendance status")
 
 

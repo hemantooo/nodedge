@@ -3,24 +3,15 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import StudentPass from './StudentPass';
-
-type Proficiency = 'Beginner' | 'Intermediate' | 'Advanced';
 
 interface FormData {
   full_name: string;
   enrollment_no: string;
   email: string;
-  semester: string;
+  class_name: string;
+  phone_number: string;
   has_mac: string;
-  proficiency: Proficiency | '';
-}
-
-interface PassData {
-  full_name: string;
-  enrollment_no: string;
-  has_mac: string;
-  registration_id: string;
+  accepted_terms: boolean;
 }
 
 const inputClass =
@@ -31,9 +22,10 @@ export default function RegistrationForm() {
     full_name: '',
     enrollment_no: '',
     email: '',
-    semester: '',
+    class_name: '',
+    phone_number: '',
     has_mac: '',
-    proficiency: '',
+    accepted_terms: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -45,9 +37,11 @@ export default function RegistrationForm() {
     if (!form.email.trim()) return 'Email is required.';
     if (!form.email.endsWith('@paruluniversity.ac.in'))
       return 'Email must be a Parul University address (@paruluniversity.ac.in).';
-    if (!form.semester) return 'Please select your semester.';
+    if (!form.phone_number.trim()) return 'Phone number is required.';
+    if (!/^\d{10}$/.test(form.phone_number.trim())) return 'Phone number must be exactly 10 digits.';
+    if (!form.class_name.trim()) return 'Class is required.';
     if (!form.has_mac) return 'Please select your Mac availability.';
-    if (!form.proficiency) return 'Please select your proficiency level.';
+    if (!form.accepted_terms) return 'You must accept the terms and conditions to register.';
     return '';
   };
 
@@ -67,9 +61,9 @@ export default function RegistrationForm() {
           full_name: form.full_name,
           enrollment_no: form.enrollment_no,
           email: form.email,
-          semester: form.semester,
+          class_name: form.class_name,
+          phone_number: form.phone_number,
           has_mac: form.has_mac,
-          proficiency: form.proficiency,
         }),
       });
 
@@ -156,36 +150,48 @@ export default function RegistrationForm() {
               />
             </div>
 
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">University Email</label>
-              <input
-                id="email"
-                type="email"
-                placeholder="yourname@paruluniversity.ac.in"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className={inputClass}
-              />
-              <p className="text-xs text-gray-600 mt-1.5">Must be your @paruluniversity.ac.in address.</p>
+            {/* Email & Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">University Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="yourname@paruluniversity.ac.in"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className={inputClass}
+                />
+                <p className="text-xs text-gray-600 mt-1.5">Must be your @paruluniversity.ac.in address.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Phone Number</label>
+                <input
+                  id="phone_number"
+                  type="tel"
+                  placeholder="e.g. 9876543210"
+                  value={form.phone_number}
+                  onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
+                  className={inputClass}
+                />
+                <p className="text-xs text-gray-600 mt-1.5">10 digits without country code.</p>
+              </div>
             </div>
 
-            {/* Semester + Has Mac row */}
+            {/* Class + Has Mac row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Semester */}
+              {/* Class */}
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Semester</label>
-                <select
-                  id="semester"
-                  value={form.semester}
-                  onChange={(e) => setForm({ ...form, semester: e.target.value })}
-                  className={`${inputClass} appearance-none`}
-                >
-                  <option value="" className="bg-gray-900">Select semester</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                    <option key={s} value={`Sem ${s}`} className="bg-gray-900">Sem {s}</option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Class</label>
+                <input
+                  id="class_name"
+                  type="text"
+                  placeholder="e.g. 2AIML4"
+                  value={form.class_name}
+                  onChange={(e) => setForm({ ...form, class_name: e.target.value })}
+                  className={inputClass}
+                />
               </div>
 
               {/* Has Mac */}
@@ -213,22 +219,42 @@ export default function RegistrationForm() {
               </div>
             </div>
 
-            {/* Proficiency */}
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-3">Proficiency Level</label>
-              <div className="flex gap-3 flex-wrap">
-                {(['Beginner', 'Intermediate', 'Advanced'] as Proficiency[]).map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    id={`proficiency_${level.toLowerCase()}`}
-                    onClick={() => setForm({ ...form, proficiency: level })}
-                    className={`px-5 py-2 rounded-full text-sm font-medium border transition-all duration-200 ${form.proficiency === level ? 'bg-gradient-to-r from-[#FF5257] to-[#985EFF] border-transparent text-white shadow-lg shadow-[#985EFF]/20' : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/20 hover:text-white'}`}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
+            {/* Conditional Mac Instructions */}
+            <AnimatePresence>
+              {form.has_mac === 'yes' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-4 rounded-xl bg-[#985EFF]/10 border border-[#985EFF]/30 text-gray-300 mt-2">
+                    <h4 className="font-semibold text-white mb-2">Mac User Requirements</h4>
+                    <p className="text-sm leading-relaxed">
+                      Please ensure you have the <strong>latest stable version of Xcode</strong> (not a beta version) and the <strong>iOS Simulator</strong> installed on your machine before the event.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Terms and Conditions */}
+            <div className="pt-4 border-t border-white/10">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <div className="relative flex items-center justify-center mt-0.5">
+                  <input
+                    type="checkbox"
+                    id="terms_conditions"
+                    checked={form.accepted_terms}
+                    onChange={(e) => setForm({ ...form, accepted_terms: e.target.checked })}
+                    className="peer appearance-none w-5 h-5 rounded-md border border-white/20 bg-white/5 checked:bg-gradient-to-r checked:from-[#FF5257] checked:to-[#985EFF] checked:border-transparent transition-all"
+                  />
+                  <CheckCircle2 className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={4} />
+                </div>
+                <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
+                  I confirm that I will attend all 3 days of the masterclass and comply with the prerequisites.
+                </span>
+              </label>
             </div>
 
             {/* Error Banner */}
