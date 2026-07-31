@@ -1,33 +1,8 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
 
 export default function Hero() {
-  const [timeLeft, setTimeLeft] = useState({ days: 14, hours: 0, minutes: 0, seconds: 0 });
-
-  useEffect(() => {
-    // 14 days from initialization time
-    const targetDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).getTime();
-
-    const interval = setInterval(() => {
-      const now = new Date().getTime();
-      const difference = targetDate - now;
-
-      if (difference > 0) {
-        setTimeLeft({
-          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-          minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
-          seconds: Math.floor((difference % (1000 * 60)) / 1000)
-        });
-      } else {
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const scrollToForm = () => {
     document.getElementById('register-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -56,23 +31,6 @@ export default function Hero() {
         <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
           Master iOS development from the ground up. Build native apps, learn modern declarative UI, and launch your Apple ecosystem journey.
         </p>
-
-        {/* Countdown */}
-        <div className="flex items-center justify-center gap-4 md:gap-8 mb-12">
-          {[
-            { label: 'Days', value: timeLeft.days },
-            { label: 'Hours', value: timeLeft.hours },
-            { label: 'Minutes', value: timeLeft.minutes },
-            { label: 'Seconds', value: timeLeft.seconds },
-          ].map((item) => (
-            <div key={item.label} className="flex flex-col items-center">
-              <div className="w-16 h-16 md:w-24 md:h-24 flex items-center justify-center bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl md:rounded-3xl shadow-lg mb-2">
-                <span className="text-2xl md:text-4xl font-semibold text-white">{item.value.toString().padStart(2, '0')}</span>
-              </div>
-              <span className="text-xs md:text-sm text-gray-400 uppercase tracking-widest">{item.label}</span>
-            </div>
-          ))}
-        </div>
 
         <button
           onClick={scrollToForm}
