@@ -197,9 +197,9 @@ async def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
         row_idx, student = res
         if student["attendance"].strip().lower() == "present":
             return {
+                **student,
                 "status": "already_marked",
                 "message": f"{student['full_name']} is already checked in.",
-                **student
             }
 
         updated_student = sheets_service.mark_attendance(request.registration_id, "Present")
@@ -210,9 +210,9 @@ async def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
             )
 
         return {
+            **updated_student,
             "status": "success",
             "message": f"Successfully checked in {updated_student['full_name']}!",
-            **updated_student
         }
     except HTTPException:
         raise
