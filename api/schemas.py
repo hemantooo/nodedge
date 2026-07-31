@@ -79,3 +79,19 @@ class StatsResponse(BaseModel):
     status: str = Field("success")
     total_registrations: int = Field(..., description="Total registrations count")
     checked_in_count: int = Field(..., description="Total checked-in (present) count")
+
+
+class AdminProcessRequest(BaseModel):
+    """
+    Schema for processing tickets in the admin dashboard.
+    """
+    password: str = Field(..., description="Admin password to process tickets")
+
+
+class AdminProcessResponse(BaseModel):
+    """
+    Response schema for processing tickets.
+    """
+    status: str = Field(default="success")
+    approved_sent: int = Field(..., description="Number of approved tickets sent")
+    rejected_sent: int = Field(..., description="Number of rejection emails sent")

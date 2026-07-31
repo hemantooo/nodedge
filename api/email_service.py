@@ -105,3 +105,38 @@ async def send_ticket_email(email: str, full_name: str, registration_id: str):
             os.remove(temp_path)
         except OSError:
             pass
+
+
+async def send_rejection_email(email: str, full_name: str):
+    """
+    Sends a rejection/waitlist email to the student.
+    """
+    conf = _get_mail_config()
+
+    if conf.MAIL_USERNAME == "your_email@gmail.com":
+        logger.warning("SMTP not configured properly. Skipping actual email send.")
+        return
+
+    html_body = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 10px;">
+        <h2 style="color: #FF5257; text-align: center;">Update on your Registration</h2>
+        <p>Hi <strong>{full_name}</strong>,</p>
+        <p>Thank you for your interest in the Parul University Event.</p>
+        <p>Due to overwhelming response and limited capacity, we unfortunately cannot accommodate everyone. At this time, we are unable to offer you a ticket to the event.</p>
+        <p>We appreciate your enthusiasm and hope to see you at our future events!</p>
+        <br/>
+        <p>Best regards,</p>
+        <p>The Event Team</p>
+    </div>
+    """
+
+    message = MessageSchema(
+        subject="Update on your Event Registration",
+        recipients=[email],
+        body=html_body,
+        subtype=MessageType.html,
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(message)
+    logger.info(f"Rejection email sent successfully to {email}")

@@ -37,7 +37,7 @@ export default function RegistrationForm() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [passData, setPassData] = useState<PassData | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const validate = (): string => {
     if (!form.full_name.trim()) return 'Full name is required.';
@@ -76,12 +76,7 @@ export default function RegistrationForm() {
       const data = await res.json();
 
       if (res.ok) {
-        setPassData({
-          full_name: form.full_name,
-          enrollment_no: form.enrollment_no,
-          has_mac: form.has_mac,
-          registration_id: data.registration_id,
-        });
+        setIsSuccess(true);
       } else if (res.status === 400) {
         setError(data.detail || 'Registration failed. You may already be registered or your email is invalid.');
       } else {
@@ -94,7 +89,27 @@ export default function RegistrationForm() {
     }
   };
 
-  if (passData) return <StudentPass data={passData} />;
+  if (isSuccess) return (
+    <section id="register-section" className="py-24 px-4 relative z-10 min-h-[60vh] flex items-center justify-center">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-md w-full bg-white/5 backdrop-blur-xl border border-[#985EFF]/30 p-8 rounded-3xl shadow-2xl text-center relative overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#FF5257] to-[#985EFF]" />
+        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle2 className="w-10 h-10 text-green-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-4">Application Submitted!</h2>
+        <p className="text-gray-300 leading-relaxed mb-6">
+          Thank you for registering, <strong>{form.full_name}</strong>. We are currently reviewing applications and will share the ticket with selected participants shortly via email.
+        </p>
+        <p className="text-sm text-gray-400">
+          We will notify you about your selection status soon.
+        </p>
+      </motion.div>
+    </section>
+  );
 
   return (
     <section id="register-section" className="py-24 px-4 relative z-10">

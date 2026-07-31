@@ -100,7 +100,8 @@ class GoogleSheetsService:
             "Has Mac",
             "Proficiency",
             "Registration ID",
-            "Attendance"
+            "Attendance",
+            "Status"
         ]
         existing_headers = self.worksheet.row_values(1)
         if not existing_headers:
@@ -136,11 +137,12 @@ class GoogleSheetsService:
         has_mac: str,
         proficiency: str,
         registration_id: str,
-        attendance: str = "Absent"
+        attendance: str = "Absent",
+        status: str = "Pending"
     ) -> List[str]:
         """
         Appends a new student registration record to the Google Sheet.
-        Row format: [Timestamp, Full Name, Enrollment No, Email, Semester, Has Mac, Proficiency, Registration ID, Attendance]
+        Row format: [Timestamp, Full Name, Enrollment No, Email, Semester, Has Mac, Proficiency, Registration ID, Attendance, Status]
         """
         worksheet = self.connect()
         timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -154,6 +156,7 @@ class GoogleSheetsService:
             proficiency.strip(),
             registration_id.strip(),
             attendance.strip(),
+            status.strip(),
         ]
         worksheet.append_row(row)
         return row
@@ -206,6 +209,38 @@ class GoogleSheetsService:
         worksheet.update_cell(row_idx, 9, status)
         student["attendance"] = status
         return student
+
+    def get_all_registrations(self) -> List[dict]:
+        """
+        Returns a list of all registrations with their row index.
+        """
+        worksheet = self.connect()
+        all_values = worksheet.get_all_values()
+        if len(all_values) <= 1:
+            return []
+        
+        students = []
+        for idx, row in enumerate(all_values[1:], start=2):
+            students.append({
+                "row_idx": idx,
+                "full_name": row[1] if len(row) >= 2 else "",
+                "enrollment_no": row[2] if len(row) >= 3 else "",
+                "email": row[3] if len(row) >= 4 else "",
+                "semester": row[4] if len(row) >= 5 else "",
+                "has_mac": row[5] if len(row) >= 6 else "",
+                "proficiency": row[6] if len(row) >= 7 else "",
+                "registration_id": row[7] if len(row) >= 8 else "",
+                "attendance": row[8] if len(row) >= 9 else "Absent",
+                "status": row[9] if len(row) >= 10 else "Pending"
+            })
+        return students
+
+    def update_student_status(self, row_idx: int, new_status: str) -> None:
+        """
+        Updates the status in column 10 for a specific row index.
+        """
+        worksheet = self.connect()
+        worksheet.update_cell(row_idx, 10, new_status)
 
     def get_attendance_stats(self) -> Tuple[int, int]:
         """

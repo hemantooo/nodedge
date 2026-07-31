@@ -24,9 +24,11 @@ from api.schemas import (
     AttendanceRequest,
     AttendanceResponse,
     StatsResponse,
+    AdminProcessRequest,
+    AdminProcessResponse,
 )
 from api.sheets_service import sheets_service
-from api.email_service import send_ticket_email
+from api.email_service import send_ticket_email, send_rejection_email
 
 # Initialize FastAPI application
 print("Starting FastAPI Backend Server on Vercel...")
@@ -125,23 +127,12 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
             detail=f"Failed to append registration data to Google Sheet: {str(exc)}",
         )
 
-    # Send ticket email (awaited directly to prevent Vercel Serverless from freezing the container mid-execution)
-    email_error = None
-    try:
-        await send_ticket_email(request.email, request.full_name, registration_id)
-    except Exception as exc:
-        email_error = str(exc)
-        import logging
-        logging.getLogger(__name__).error(f"Email delivery failed: {email_error}")
-
     # 4. Return success response
     response = {
         "status": "success",
         "message": "Registration successful!",
         "registration_id": registration_id,
     }
-    if email_error:
-        response["email_warning"] = f"Registration saved but email failed: {email_error}"
     return response
 
 
@@ -261,6 +252,62 @@ async def get_stats(pin: str) -> Dict[str, Any]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Database error occurred: {str(exc)}",
         )
+
+
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+
+@app.post(
+    "/api/admin/process-tickets",
+    response_model=AdminProcessResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Process Pending Approvals & Rejections",
+    description="Reads Google Sheet, sends QR tickets to 'Approved' students and rejection emails to 'Rejected' students.",
+)
+async def process_tickets(request: AdminProcessRequest) -> Dict[str, Any]:
+    """
+    Handles processing tickets.
+    """
+    if request.password != ADMIN_PASSWORD:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid admin password.",
+        )
+
+    try:
+        students = sheets_service.get_all_registrations()
+        approved_sent = 0
+        rejected_sent = 0
+        
+        for student in students:
+            status_val = student.get("status", "").strip().lower()
+            if status_val == "approved":
+                try:
+                    await send_ticket_email(student["email"], student["full_name"], student["registration_id"])
+                    sheets_service.update_student_status(student["row_idx"], "Ticket Sent")
+                    approved_sent += 1
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Failed to send ticket to {student['email']}: {e}")
+            elif status_val == "rejected":
+                try:
+                    await send_rejection_email(student["email"], student["full_name"])
+                    sheets_service.update_student_status(student["row_idx"], "Rejection Sent")
+                    rejected_sent += 1
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Failed to send rejection to {student['email']}: {e}")
+
+        return {
+            "status": "success",
+            "approved_sent": approved_sent,
+            "rejected_sent": rejected_sent,
+        }
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing tickets: {str(exc)}",
+        )
+
 
 
 if __name__ == "__main__":
