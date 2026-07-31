@@ -130,7 +130,7 @@ export default function RegistrationForm() {
               <input
                 id="full_name"
                 type="text"
-                placeholder="e.g. Aisha Mehta"
+                placeholder="e.g. Hemanta Manna"
                 value={form.full_name}
                 onChange={(e) => setForm({ ...form, full_name: e.target.value })}
                 className={inputClass}
@@ -143,7 +143,7 @@ export default function RegistrationForm() {
               <input
                 id="enrollment_no"
                 type="text"
-                placeholder="e.g. 22BAIML123"
+                placeholder="e.g. 2501234567890"
                 value={form.enrollment_no}
                 onChange={(e) => setForm({ ...form, enrollment_no: e.target.value })}
                 className={inputClass}
@@ -157,7 +157,7 @@ export default function RegistrationForm() {
                 <input
                   id="email"
                   type="email"
-                  placeholder="yourname@paruluniversity.ac.in"
+                  placeholder="e.g. enrollment@paruluniversity.ac.in"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className={inputClass}
@@ -187,7 +187,7 @@ export default function RegistrationForm() {
                 <input
                   id="class_name"
                   type="text"
-                  placeholder="e.g. 2AIML4"
+                  placeholder="e.g. 3AIML13"
                   value={form.class_name}
                   onChange={(e) => setForm({ ...form, class_name: e.target.value })}
                   className={inputClass}
