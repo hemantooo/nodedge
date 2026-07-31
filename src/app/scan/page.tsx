@@ -21,9 +21,9 @@ interface Attendee {
   full_name: string;
   enrollment_no: string;
   email: string;
-  semester: string;
+  class_name: string;
+  phone_number: string;
   has_mac: string;
-  proficiency: string;
   attendance: string;
 }
 
@@ -648,12 +648,12 @@ export default function ScanPage() {
                             <p className="font-mono text-gray-300 mt-0.5 leading-tight truncate">{scanResult.student.enrollment_no}</p>
                           </div>
                           <div>
-                            <span className="text-gray-500 text-[10px] uppercase font-semibold">Semester</span>
-                            <p className="text-gray-300 mt-0.5 leading-tight">{scanResult.student.semester}</p>
+                            <span className="text-gray-500 text-[10px] uppercase font-semibold">Class</span>
+                            <p className="text-gray-300 mt-0.5 leading-tight">{scanResult.student.class_name}</p>
                           </div>
                           <div>
-                            <span className="text-gray-500 text-[10px] uppercase font-semibold">Proficiency</span>
-                            <p className="text-gray-300 mt-0.5 leading-tight">{scanResult.student.proficiency}</p>
+                            <span className="text-gray-500 text-[10px] uppercase font-semibold">Phone</span>
+                            <p className="text-gray-300 mt-0.5 leading-tight">{scanResult.student.phone_number}</p>
                           </div>
                         </div>
                       </motion.div>
