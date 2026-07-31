@@ -194,7 +194,7 @@ async def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
                 detail="Registration ID not found.",
             )
 
-        worksheet, row_idx, student = res
+        row_idx, student = res
         if student["attendance"].strip().lower() == "present":
             return {
                 "status": "already_marked",
@@ -283,7 +283,7 @@ async def process_tickets(request: AdminProcessRequest) -> Dict[str, Any]:
             if status_val == "approved":
                 try:
                     await send_ticket_email(student["email"], student["full_name"], student["registration_id"])
-                    sheets_service.update_student_status(student["worksheet_title"], student["row_idx"], "Ticket Sent")
+                    sheets_service.update_student_status(student["row_idx"], "Ticket Sent")
                     approved_sent += 1
                 except Exception as e:
                     import logging
@@ -291,7 +291,7 @@ async def process_tickets(request: AdminProcessRequest) -> Dict[str, Any]:
             elif status_val == "rejected":
                 try:
                     await send_rejection_email(student["email"], student["full_name"])
-                    sheets_service.update_student_status(student["worksheet_title"], student["row_idx"], "Rejection Sent")
+                    sheets_service.update_student_status(student["row_idx"], "Rejection Sent")
                     rejected_sent += 1
                 except Exception as e:
                     import logging
