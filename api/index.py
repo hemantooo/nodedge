@@ -194,7 +194,7 @@ async def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
                 detail="Registration ID not found.",
             )
 
-        row_idx, student = res
+        worksheet, row_idx, student = res
         if student["attendance"].strip().lower() == "present":
             return {
                 "status": "already_marked",
