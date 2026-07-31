@@ -68,8 +68,8 @@ class GoogleSheetsService:
         creds = self._get_credentials()
         self.client = gspread.authorize(creds)
         self.sheet = self.client.open_by_key(self.spreadsheet_id)
-        # Select first worksheet by default
-        self.worksheet = self.sheet.sheet1
+        # Select first worksheet by index (0) so name doesn't matter
+        self.worksheet = self.sheet.get_worksheet(0)
         self._ensure_headers()
         return self.worksheet
 
