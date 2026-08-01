@@ -1,7 +1,7 @@
 import os
 from typing import List, Optional, Tuple, Dict, Any
 from supabase import create_client, Client
-from supabase.lib.client_options import ClientOptions
+from supabase.lib.client_options import SyncClientOptions
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -17,7 +17,7 @@ class SupabaseService:
         
         self.client: Optional[Client] = None
         if url and key:
-            opts = ClientOptions(persist_session=False)
+            opts = SyncClientOptions(persist_session=False)
             self.client = create_client(url, key, options=opts)
 
     def is_enrollment_registered(self, enrollment_no: str) -> bool:
