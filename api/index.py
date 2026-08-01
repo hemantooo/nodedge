@@ -109,7 +109,8 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
         if "your_project_url" in url or "your_supabase_project_url_here" in url or not url:
             detail_msg = "Database service error: SUPABASE_URL is using a placeholder or is not configured. Please set the actual URL in Vercel settings."
         else:
-            detail_msg = f"Database service error: {str(exc)}"
+            safe_url = url[:40] + "..." if len(url) > 40 else url
+            detail_msg = f"Database service error (Connecting to: {safe_url}): {str(exc)}"
             
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
