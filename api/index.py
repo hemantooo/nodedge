@@ -87,7 +87,7 @@ def generate_registration_id(enrollment_no: str) -> str:
     summary="Submit Workshop Registration",
     description="Validates student details, checks for duplicate enrollment, and appends record to Google Sheet.",
 )
-def register_student(request: RegistrationRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
+async def register_student(request: RegistrationRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
     """
     Handles student registration POST requests.
     """
@@ -152,7 +152,7 @@ def register_student(request: RegistrationRequest, background_tasks: BackgroundT
     summary="Backend & Google Sheets Health Status",
     description="Returns backend status and total registration count from Google Sheet.",
 )
-def health_check() -> Dict[str, Any]:
+async def health_check() -> Dict[str, Any]:
     """
     Health check endpoint returning connection status and total registered count.
     """
@@ -185,7 +185,7 @@ COORDINATOR_PIN = os.getenv("COORDINATOR_PIN", "1234")
     summary="Mark Attendee Attendance",
     description="Validates coordinator PIN, checks registration ID in sheet, and marks student as Present.",
 )
-def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
+async def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
     """
     Handles marking attendance.
     """
@@ -239,7 +239,7 @@ def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
     summary="Get Attendance Statistics",
     description="Returns check-in counts (total registered vs present) after verifying Coordinator PIN.",
 )
-def get_stats(pin: str) -> Dict[str, Any]:
+async def get_stats(pin: str) -> Dict[str, Any]:
     """
     Returns check-in stats.
     """
