@@ -8,4 +8,4 @@ httpx>=0.24.0
 qrcode>=7.4.2
 Pillow>=10.0.0
 fastapi-mail>=1.4.1
-supabase>=2.3.0
+supabase==2.31.0
