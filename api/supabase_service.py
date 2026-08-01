@@ -1,5 +1,6 @@
 import os
 import json
+import ssl
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -9,15 +10,19 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Create a lightweight unverified SSL context to prevent disk CA cert bundle locks in Vercel sandbox
+SSL_CONTEXT = ssl._create_unverified_context()
+
 class SupabaseService:
     """
     Service class to handle operations with Supabase using native REST API.
     Bypasses third-party SDK dependencies for maximum stability on Vercel Serverless.
     """
     def __init__(self, supabase_url: Optional[str] = None, supabase_key: Optional[str] = None):
-        raw_url = supabase_url or os.environ.get("SUPABASE_URL", "")
+        raw_url = (supabase_url or os.environ.get("SUPABASE_URL", "")).strip().strip('"').strip("'")
         self.url: str = raw_url.rstrip("/")
-        self.key: str = supabase_key or os.environ.get("SUPABASE_KEY", "")
+        raw_key = (supabase_key or os.environ.get("SUPABASE_KEY", "")).strip().strip('"').strip("'")
+        self.key: str = raw_key
 
     def _request(self, method: str, endpoint: str, data: Optional[dict] = None, headers_extra: Optional[dict] = None) -> Any:
         if not self.url or not self.key:
@@ -37,7 +42,7 @@ class SupabaseService:
         req = urllib.request.Request(full_url, data=body_bytes, headers=headers, method=method)
 
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, context=SSL_CONTEXT) as resp:
                 res_body = resp.read().decode("utf-8")
                 return json.loads(res_body) if res_body else []
         except urllib.error.HTTPError as e:
