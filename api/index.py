@@ -103,10 +103,17 @@ def register_student(request: RegistrationRequest, background_tasks: BackgroundT
     except Exception as exc:
         import traceback
         traceback.print_exc()
-        # If Google Sheets service is unconfigured or unreachable
+        
+        # Check if the user is using the placeholder URL
+        url = os.environ.get("SUPABASE_URL", "")
+        if "your_project_url" in url or "your_supabase_project_url_here" in url or not url:
+            detail_msg = "Database service error: SUPABASE_URL is using a placeholder or is not configured. Please set the actual URL in Vercel settings."
+        else:
+            detail_msg = f"Database service error: {str(exc)}"
+            
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database service error: {str(exc)}",
+            detail=detail_msg,
         )
 
     # 2. Generate unique registration hash ID

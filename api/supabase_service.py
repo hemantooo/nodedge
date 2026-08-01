@@ -17,6 +17,7 @@ class SupabaseService:
         
         self.client: Optional[Client] = None
         if url and key:
+            print(f"Initializing Supabase client with URL: {url[:30]}...")
             opts = SyncClientOptions(persist_session=False)
             self.client = create_client(url, key, options=opts)
 
