@@ -87,7 +87,7 @@ def generate_registration_id(enrollment_no: str) -> str:
     summary="Submit Workshop Registration",
     description="Validates student details, checks for duplicate enrollment, and appends record to Google Sheet.",
 )
-async def register_student(request: RegistrationRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
+def register_student(request: RegistrationRequest, background_tasks: BackgroundTasks) -> Dict[str, Any]:
     """
     Handles student registration POST requests.
     """
@@ -101,6 +101,8 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
     except HTTPException:
         raise
     except Exception as exc:
+        import traceback
+        traceback.print_exc()
         # If Google Sheets service is unconfigured or unreachable
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -143,7 +145,7 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
     summary="Backend & Google Sheets Health Status",
     description="Returns backend status and total registration count from Google Sheet.",
 )
-async def health_check() -> Dict[str, Any]:
+def health_check() -> Dict[str, Any]:
     """
     Health check endpoint returning connection status and total registered count.
     """
@@ -176,7 +178,7 @@ COORDINATOR_PIN = os.getenv("COORDINATOR_PIN", "1234")
     summary="Mark Attendee Attendance",
     description="Validates coordinator PIN, checks registration ID in sheet, and marks student as Present.",
 )
-async def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
+def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
     """
     Handles marking attendance.
     """
@@ -230,7 +232,7 @@ async def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
     summary="Get Attendance Statistics",
     description="Returns check-in counts (total registered vs present) after verifying Coordinator PIN.",
 )
-async def get_stats(pin: str) -> Dict[str, Any]:
+def get_stats(pin: str) -> Dict[str, Any]:
     """
     Returns check-in stats.
     """
