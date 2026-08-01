@@ -27,7 +27,7 @@ from api.schemas import (
     AdminProcessRequest,
     AdminProcessResponse,
 )
-from api.sheets_service import sheets_service
+from api.supabase_service import supabase_service
 from api.email_service import send_ticket_email, send_rejection_email
 
 # Initialize FastAPI application
@@ -93,7 +93,7 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
     """
     # 1. Check duplicate enrollment number in Google Sheet
     try:
-        if sheets_service.is_enrollment_registered(request.enrollment_no):
+        if supabase_service.is_enrollment_registered(request.enrollment_no):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Enrollment number already registered.",
@@ -104,7 +104,7 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
         # If Google Sheets service is unconfigured or unreachable
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Google Sheets service error: {str(exc)}",
+            detail=f"Database service error: {str(exc)}",
         )
 
     # 2. Generate unique registration hash ID
@@ -112,7 +112,7 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
 
     # 3. Append new row to Google Sheet
     try:
-        sheets_service.append_registration(
+        supabase_service.append_registration(
             full_name=request.full_name,
             enrollment_no=request.enrollment_no,
             email=request.email,
@@ -124,7 +124,7 @@ async def register_student(request: RegistrationRequest, background_tasks: Backg
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to append registration data to Google Sheet: {str(exc)}",
+            detail=f"Failed to append registration data to database: {str(exc)}",
         )
 
     # 4. Return success response
@@ -147,14 +147,14 @@ async def health_check() -> Dict[str, Any]:
     """
     Health check endpoint returning connection status and total registered count.
     """
-    is_connected, total_count, err_msg = sheets_service.check_health()
+    is_connected, total_count, err_msg = supabase_service.check_health()
 
     if not is_connected:
         return {
             "status": "degraded",
             "total_registrations": 0,
             "google_sheets_connected": False,
-            "message": f"Google Sheets connection issue: {err_msg}",
+            "message": f"Database connection issue: {err_msg}",
         }
 
     return {
@@ -187,7 +187,7 @@ async def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
         )
 
     try:
-        res = sheets_service.get_student_by_registration_id(request.registration_id)
+        res = supabase_service.get_student_by_registration_id(request.registration_id)
         if not res:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -202,11 +202,11 @@ async def mark_attendance(request: AttendanceRequest) -> Dict[str, Any]:
                 "message": f"{student['full_name']} is already checked in.",
             }
 
-        updated_student = sheets_service.mark_attendance(request.registration_id, "Present")
+        updated_student = supabase_service.mark_attendance(request.registration_id, "Present")
         if not updated_student:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update attendance in Google Sheet.",
+                detail="Failed to update attendance in Database.",
             )
 
         return {
@@ -241,7 +241,7 @@ async def get_stats(pin: str) -> Dict[str, Any]:
         )
 
     try:
-        total, present = sheets_service.get_attendance_stats()
+        total, present = supabase_service.get_attendance_stats()
         return {
             "status": "success",
             "total_registrations": total,
@@ -274,7 +274,7 @@ async def process_tickets(request: AdminProcessRequest) -> Dict[str, Any]:
         )
 
     try:
-        students = sheets_service.get_all_registrations()
+        students = supabase_service.get_all_registrations()
         approved_sent = 0
         rejected_sent = 0
         
@@ -283,7 +283,7 @@ async def process_tickets(request: AdminProcessRequest) -> Dict[str, Any]:
             if status_val == "approved":
                 try:
                     await send_ticket_email(student["email"], student["full_name"], student["registration_id"])
-                    sheets_service.update_student_status(student["row_idx"], "Ticket Sent")
+                    supabase_service.update_student_status(student["id"], "Ticket Sent")
                     approved_sent += 1
                 except Exception as e:
                     import logging
@@ -291,7 +291,7 @@ async def process_tickets(request: AdminProcessRequest) -> Dict[str, Any]:
             elif status_val == "rejected":
                 try:
                     await send_rejection_email(student["email"], student["full_name"])
-                    sheets_service.update_student_status(student["row_idx"], "Rejection Sent")
+                    supabase_service.update_student_status(student["id"], "Rejection Sent")
                     rejected_sent += 1
                 except Exception as e:
                     import logging
