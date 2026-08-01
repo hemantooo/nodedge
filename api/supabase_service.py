@@ -1,7 +1,9 @@
 import os
+import json
+import urllib.request
+import urllib.parse
+import urllib.error
 from typing import List, Optional, Tuple, Dict, Any
-from supabase import create_client, Client
-from supabase.lib.client_options import SyncClientOptions
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -9,28 +11,49 @@ load_dotenv()
 
 class SupabaseService:
     """
-    Service class to handle operations with Supabase.
+    Service class to handle operations with Supabase using native REST API.
+    Bypasses third-party SDK dependencies for maximum stability on Vercel Serverless.
     """
     def __init__(self, supabase_url: Optional[str] = None, supabase_key: Optional[str] = None):
-        url: str = supabase_url or os.environ.get("SUPABASE_URL", "")
-        key: str = supabase_key or os.environ.get("SUPABASE_KEY", "")
-        
-        self.client: Optional[Client] = None
-        if url and key:
-            print(f"Initializing Supabase client with URL: {url[:30]}...")
-            opts = SyncClientOptions(persist_session=False)
-            self.client = create_client(url, key, options=opts)
+        raw_url = supabase_url or os.environ.get("SUPABASE_URL", "")
+        self.url: str = raw_url.rstrip("/")
+        self.key: str = supabase_key or os.environ.get("SUPABASE_KEY", "")
+
+    def _request(self, method: str, endpoint: str, data: Optional[dict] = None, headers_extra: Optional[dict] = None) -> Any:
+        if not self.url or not self.key:
+            raise ValueError("Supabase URL or Key is not configured.")
+
+        full_url = f"{self.url}/rest/v1/{endpoint}"
+        headers = {
+            "apikey": self.key,
+            "Authorization": f"Bearer {self.key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+        }
+        if headers_extra:
+            headers.update(headers_extra)
+
+        body_bytes = json.dumps(data).encode("utf-8") if data is not None else None
+        req = urllib.request.Request(full_url, data=body_bytes, headers=headers, method=method)
+
+        try:
+            with urllib.request.urlopen(req) as resp:
+                res_body = resp.read().decode("utf-8")
+                return json.loads(res_body) if res_body else []
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8")
+            raise RuntimeError(f"Supabase API Error ({e.code}): {err_body}")
+        except Exception as e:
+            raise RuntimeError(f"Supabase Request Failed: {str(e)}")
 
     def is_enrollment_registered(self, enrollment_no: str) -> bool:
         """
         Checks if an enrollment number already exists in the Supabase table.
         """
-        if not self.client:
-            raise ValueError("Supabase client is not initialized.")
-            
-        clean_target = str(enrollment_no).strip().lower()
-        response = self.client.table("registrations").select("id").ilike("enrollment_no", clean_target).execute()
-        return len(response.data) > 0
+        clean_target = urllib.parse.quote(str(enrollment_no).strip().lower())
+        endpoint = f"registrations?select=id&enrollment_no=ilike.{clean_target}"
+        res = self._request("GET", endpoint)
+        return isinstance(res, list) and len(res) > 0
 
     def append_registration(
         self,
@@ -47,9 +70,6 @@ class SupabaseService:
         """
         Appends a new student registration record to Supabase.
         """
-        if not self.client:
-            raise ValueError("Supabase client is not initialized.")
-            
         data = {
             "full_name": full_name.strip(),
             "enrollment_no": str(enrollment_no).strip(),
@@ -61,101 +81,84 @@ class SupabaseService:
             "attendance": attendance.strip(),
             "status": status.strip(),
         }
-        response = self.client.table("registrations").insert(data).execute()
-        return response.data[0] if response.data else {}
+        res = self._request("POST", "registrations", data=data)
+        if isinstance(res, list) and len(res) > 0:
+            return res[0]
+        return res if isinstance(res, dict) else {}
 
     def get_student_by_registration_id(self, registration_id: str) -> Optional[Tuple[None, dict]]:
         """
         Searches Supabase for a registration_id or Enrollment No.
         Returns a tuple of (None, student_data_dict) if found, else None.
-        (None is returned for row_idx to keep backward compatibility with index.py destructing).
         """
-        if not self.client:
-            return None
-            
-        clean_target = str(registration_id).strip().lower()
+        clean_target = urllib.parse.quote(str(registration_id).strip().lower())
         if not clean_target:
             return None
 
-        response = self.client.table("registrations").select("*").or_(f"registration_id.ilike.%{clean_target}%,enrollment_no.ilike.%{clean_target}%").execute()
-        
-        if response.data and len(response.data) > 0:
-            return None, response.data[0]
-            
+        endpoint = f"registrations?select=*&or=(registration_id.ilike.%25{clean_target}%25,enrollment_no.ilike.%25{clean_target}%25)"
+        res = self._request("GET", endpoint)
+        if isinstance(res, list) and len(res) > 0:
+            return None, res[0]
         return None
 
     def mark_attendance(self, registration_id: str, status: str = "Present") -> Optional[dict]:
         """
         Finds student by registration_id and updates their attendance status.
         """
-        if not self.client:
-            return None
-            
         result = self.get_student_by_registration_id(registration_id)
         if not result:
             return None
             
         _, student = result
-        response = self.client.table("registrations").update({"attendance": status}).eq("id", student["id"]).execute()
-        
-        if response.data:
-            return response.data[0]
+        student_id = student["id"]
+        endpoint = f"registrations?id=eq.{student_id}"
+        res = self._request("PATCH", endpoint, data={"attendance": status})
+        if isinstance(res, list) and len(res) > 0:
+            return res[0]
         return None
 
     def get_all_registrations(self) -> List[dict]:
         """
         Returns a list of all registrations.
         """
-        if not self.client:
-            return []
-            
-        response = self.client.table("registrations").select("*").execute()
-        return response.data
+        res = self._request("GET", "registrations?select=*")
+        return res if isinstance(res, list) else []
 
     def update_student_status(self, student_uuid: str, new_status: str) -> None:
         """
         Updates the status for a specific student UUID.
         """
-        if not self.client:
-            return
-            
-        self.client.table("registrations").update({"status": new_status}).eq("id", student_uuid).execute()
+        endpoint = f"registrations?id=eq.{student_uuid}"
+        self._request("PATCH", endpoint, data={"status": new_status})
 
     def get_attendance_stats(self) -> Tuple[int, int]:
         """
         Calculates stats of checked-in vs total registrations.
         """
-        if not self.client:
+        try:
+            all_regs = self.get_all_registrations()
+            total = len(all_regs)
+            present = sum(1 for r in all_regs if str(r.get("attendance", "")).lower() == "present")
+            return total, present
+        except Exception:
             return 0, 0
-            
-        total_res = self.client.table("registrations").select("id", count="exact").execute()
-        total = total_res.count if total_res.count is not None else 0
-        
-        present_res = self.client.table("registrations").select("id", count="exact").ilike("attendance", "present").execute()
-        present = present_res.count if present_res.count is not None else 0
-        
-        return total, present
 
     def get_total_registrations(self) -> int:
         """
         Returns total count of registered students.
         """
-        if not self.client:
-            return 0
-            
-        total_res = self.client.table("registrations").select("id", count="exact").execute()
-        return total_res.count if total_res.count is not None else 0
+        total, _ = self.get_attendance_stats()
+        return total
 
     def check_health(self) -> Tuple[bool, int, Optional[str]]:
         """
         Checks Supabase connection health and registration count.
-        Returns: (is_connected, total_count, error_message)
         """
         try:
-            if not self.client:
-                return False, 0, "Supabase client not initialized (check URL and Key)."
-            count = self.get_total_registrations()
-            return True, count, None
+            if not self.url or not self.key:
+                return False, 0, "Supabase URL or Key not configured."
+            total = self.get_total_registrations()
+            return True, total, None
         except Exception as e:
             return False, 0, str(e)
 
